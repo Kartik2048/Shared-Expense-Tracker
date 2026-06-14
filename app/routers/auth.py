@@ -28,10 +28,17 @@ JWT_EXPIRY_HOURS = 24
 @router.get("/login/google")
 async def login_google(request: Request):
     # Determine callback URL dynamically based on request base URL
-    redirect_uri = request.url_for('auth_callback')
-    # If request is HTTP but proxying HTTPS, fix scheme
-    if "localhost" not in redirect_uri and redirect_uri.startswith("http://"):
-        redirect_uri = redirect_uri.replace("http://", "https://")
+    redirect_uri = str(request.url_for('auth_callback'))
+    
+    # Clean up local vs production protocol routing
+    if "localhost" in redirect_uri or "127.0.0.1" in redirect_uri:
+        # STRICTLY force HTTP for local development to prevent Uvicorn SSL crashes
+        redirect_uri = redirect_uri.replace("https://", "http://")
+    else:
+        # STRICTLY force HTTPS for production (Vercel)
+        if redirect_uri.startswith("http://"):
+            redirect_uri = redirect_uri.replace("http://", "https://")
+            
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @router.get("/auth/callback", name="auth_callback")
