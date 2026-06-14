@@ -107,10 +107,25 @@ def seed_data():
 def test_staging_actions():
     db = SessionLocal()
     
+    # Generate mock JWT for Kartik (who has email kartik@example.com in seeded db)
+    import jwt
+    import time
+    JWT_SECRET = os.getenv('JWT_SECRET', 'super-secret-key-change-in-production')
+    kartik_user = db.query(User).filter(User.email == "kartik@example.com").first()
+    assert kartik_user is not None, "Kartik user must exist in seeded database"
+    
+    payload = {
+        "user_id": kartik_user.id,
+        "email": kartik_user.email,
+        "exp": int(time.time()) + 3600
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    headers = {"Authorization": f"Bearer {token}"}
+    
     print("\n--- 1. Testing MODIFY Staging Expense (PUT) ---")
     # Modify Row 3 to supply the missing raw_paid_by
-    payload = {"raw_paid_by": "aisha"}
-    response = client.put("/staging/3", json=payload)
+    payload_data = {"raw_paid_by": "aisha"}
+    response = client.put("/staging/3", json=payload_data, headers=headers)
     print(f"Status Code: {response.status_code}")
     print(f"Response: {response.json()}")
     assert response.status_code == 200
@@ -121,7 +136,7 @@ def test_staging_actions():
     
     print("\n--- 2. Testing DISCARD Staging Expense (DELETE) ---")
     # Discard Row 3
-    response = client.delete("/staging/3")
+    response = client.delete("/staging/3", headers=headers)
     print(f"Status Code: {response.status_code}")
     print(f"Response: {response.json()}")
     assert response.status_code == 200
@@ -132,7 +147,7 @@ def test_staging_actions():
     
     print("\n--- 3. Testing APPROVE Staging Expense (POST) - Equal USD Splits ---")
     # Row 2 is 100.00 USD. Rate should be 83.5. Equal splits for rohan and kartik (50.00 each)
-    response = client.post("/staging/2/approve")
+    response = client.post("/staging/2/approve", headers=headers)
     print(f"Status Code: {response.status_code}")
     print(f"Response: {response.json()}")
     assert response.status_code == 201
@@ -159,7 +174,7 @@ def test_staging_actions():
     # Row 4 is 100.00 INR equal splits for 3 users (kartik, aisha, rohan)
     # 100.00 / 3 = 33.3333... Rounded splits: 33.33 each. Sum = 99.99. 
     # Rounding difference = 0.01. Should be applied to the first splitter (kartik), making it 33.34.
-    response = client.post("/staging/4/approve")
+    response = client.post("/staging/4/approve", headers=headers)
     print(f"Status Code: {response.status_code}")
     print(f"Response: {response.json()}")
     assert response.status_code == 201
@@ -186,7 +201,7 @@ def test_staging_actions():
     
     print("\n--- 5. Testing APPROVE Staging Expense (POST) - Exact Split Space Parsing & Names With Spaces ---")
     # Row 1 has exact splits: "kartik 400; aisha 400; priya s 400"
-    response = client.post("/staging/1/approve")
+    response = client.post("/staging/1/approve", headers=headers)
     print(f"Status Code: {response.status_code}")
     print(f"Response: {response.json()}")
     assert response.status_code == 201
@@ -207,7 +222,7 @@ def test_staging_actions():
 
     print("\n--- 6. Testing GET /balances/{user_id} ---")
     # Fetch Kartik's balance (User ID 1)
-    response = client.get("/balances/1")
+    response = client.get(f"/balances/{kartik_user.id}", headers=headers)
     print(f"Status Code: {response.status_code}")
     print(f"Response: {json.dumps(response.json(), indent=2)}")
     assert response.status_code == 200

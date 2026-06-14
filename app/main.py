@@ -1,10 +1,12 @@
+import os
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.database import engine, get_db
-from app.routers import ingestion, staging_actions, balances
+from app.routers import ingestion, staging_actions, balances, auth
 
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 # Auto-create tables (SQLite/MySQL) on application start
 models.Base.metadata.create_all(bind=engine)
@@ -22,7 +24,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "super-secret-starlette-session-key-change-in-prod")
+)
 
+app.include_router(auth.router)
 app.include_router(ingestion.router)
 app.include_router(staging_actions.router)
 app.include_router(balances.router)

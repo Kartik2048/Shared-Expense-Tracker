@@ -5,6 +5,7 @@ from typing import List
 from pydantic import BaseModel
 from app import models
 from app.database import get_db
+from app.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -26,7 +27,7 @@ class BalanceResponse(BaseModel):
     owed_details: List[ExpenseDetail]
 
 @router.get("/balances/{user_id}", response_model=BalanceResponse, status_code=status.HTTP_200_OK)
-def get_user_balances(user_id: int, db: Session = Depends(get_db)):
+def get_user_balances(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Calculate and return a user's total Paid, Owed, and Net Balance in INR,
     along with detailed breakdown logs of the underlying expenses.

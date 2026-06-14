@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.services import validation
+from app.dependencies import get_current_user
 
 router = APIRouter()
 
 @router.get("/staging", status_code=status.HTTP_200_OK)
-def get_staging_status(db: Session = Depends(get_db)):
+def get_staging_status(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Get all staging records with their current validation status and metrics.
     """
@@ -63,7 +64,7 @@ def parse_date(date_str: str) -> datetime:
 
 
 @router.delete("/staging/{row_id}", status_code=status.HTTP_200_OK)
-def discard_staging_expense(row_id: int, db: Session = Depends(get_db)):
+def discard_staging_expense(row_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Discard (delete) the staging expense with the given ID.
     """
@@ -80,7 +81,7 @@ def discard_staging_expense(row_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/staging/{row_id}", response_model=schemas.StagingExpenseResponse, status_code=status.HTTP_200_OK)
-def modify_staging_expense(row_id: int, payload: schemas.StagingExpenseUpdate, db: Session = Depends(get_db)):
+def modify_staging_expense(row_id: int, payload: schemas.StagingExpenseUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Modify (update) raw staging fields, set status to pending, and re-run validation.
     """
@@ -109,7 +110,7 @@ def modify_staging_expense(row_id: int, payload: schemas.StagingExpenseUpdate, d
 
 
 @router.post("/staging/{row_id}/approve", status_code=status.HTTP_201_CREATED)
-def approve_staging_expense(row_id: int, db: Session = Depends(get_db)):
+def approve_staging_expense(row_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Approve a staging record and promote it to the production Expense and ExpenseSplit tables.
     """
