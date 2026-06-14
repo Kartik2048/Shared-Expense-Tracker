@@ -24,7 +24,8 @@ def seed_data():
     kartik = User(name="kartik", email="kartik@example.com")
     aisha = User(name="aisha", email="aisha@example.com")
     rohan = User(name="rohan", email="rohan@example.com")
-    db.add_all([kartik, aisha, rohan])
+    priya_s = User(name="priya s", email="priyas@example.com")
+    db.add_all([kartik, aisha, rohan, priya_s])
     db.commit()
     
     # Group
@@ -36,11 +37,12 @@ def seed_data():
     member_kartik = GroupMember(group_id=group.id, user_id=kartik.id, joined_at=datetime(2026, 1, 1))
     member_aisha = GroupMember(group_id=group.id, user_id=aisha.id, joined_at=datetime(2026, 1, 1))
     member_rohan = GroupMember(group_id=group.id, user_id=rohan.id, joined_at=datetime(2026, 1, 1))
-    db.add_all([member_kartik, member_aisha, member_rohan])
+    member_priya_s = GroupMember(group_id=group.id, user_id=priya_s.id, joined_at=datetime(2026, 1, 1))
+    db.add_all([member_kartik, member_aisha, member_rohan, member_priya_s])
     db.commit()
     
     # Seed staging expenses
-    # Staging row 1 (Valid exact splits)
+    # Staging row 1 (Valid exact splits with space formatting & name with space)
     se1 = StagingExpense(
         id=1,
         raw_date="2026-02-10",
@@ -49,8 +51,8 @@ def seed_data():
         raw_amount="1200.00",
         raw_currency="INR",
         raw_split_type="exact",
-        raw_split_with="kartik,aisha,rohan",
-        raw_split_details="kartik:400,aisha:400,rohan:400",
+        raw_split_with="kartik,aisha,priya s",
+        raw_split_details="kartik 400; aisha 400; priya s 400",
         status="pending"
     )
     # Staging row 2 (Valid equal splits USD)
@@ -182,8 +184,43 @@ def test_staging_actions():
     staging_row4 = db.query(StagingExpense).filter(StagingExpense.id == 4).first()
     assert staging_row4 is None
     
+    print("\n--- 5. Testing APPROVE Staging Expense (POST) - Exact Split Space Parsing & Names With Spaces ---")
+    # Row 1 has exact splits: "kartik 400; aisha 400; priya s 400"
+    response = client.post("/staging/1/approve")
+    print(f"Status Code: {response.status_code}")
+    print(f"Response: {response.json()}")
+    assert response.status_code == 201
+    expense_id_exact = response.json()["expense_id"]
+    
+    expense_exact = db.query(Expense).filter(Expense.id == expense_id_exact).first()
+    assert expense_exact.amount == Decimal("1200.0000")
+    
+    splits_exact = db.query(ExpenseSplit).filter(ExpenseSplit.expense_id == expense_id_exact).all()
+    assert len(splits_exact) == 3
+    for idx, s in enumerate(splits_exact):
+        assert s.amount == Decimal("400.0000")
+        print(f" -> Split created: User ID {s.user_id} owes {s.amount}")
+        
+    # Verify Row 1 is deleted from staging
+    staging_row1 = db.query(StagingExpense).filter(StagingExpense.id == 1).first()
+    assert staging_row1 is None
+
+    print("\n--- 6. Testing GET /balances/{user_id} ---")
+    # Fetch Kartik's balance (User ID 1)
+    response = client.get("/balances/1")
+    print(f"Status Code: {response.status_code}")
+    print(f"Response: {json.dumps(response.json(), indent=2)}")
+    assert response.status_code == 200
+    res_json = response.json()
+    assert res_json["user_name"] == "kartik"
+    assert res_json["total_paid_inr"] == 1300.0
+    assert res_json["total_owed_inr"] == 4608.34
+    assert res_json["net_balance_inr"] == -3308.34
+    assert len(res_json["paid_details"]) == 2
+    assert len(res_json["owed_details"]) == 3
+
     db.close()
-    print("\nStaging actions (Discard, Modify, Approve) verified successfully!")
+    print("\nStaging actions (Discard, Modify, Approve) and Balances verified successfully!")
 
 if __name__ == "__main__":
     seed_data()

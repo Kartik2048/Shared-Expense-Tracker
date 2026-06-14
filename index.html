@@ -564,15 +564,48 @@
             border-color: var(--accent) !important;
             box-shadow: 0 0 10px var(--accent-glow) !important;
         }
+
+        /* Drill-down Scroll container */
+        .drilldown-scroll-container {
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-md);
+            background: rgba(15, 23, 42, 0.35);
+            margin-top: 0.5rem;
+        }
+        
+        .drilldown-scroll-container td {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+        
+        .drilldown-scroll-container th {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            background: rgba(30, 41, 59, 0.6);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
         <!-- Dashboard Header -->
-        <header>
+        <header style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 2.5rem; padding-top: 1rem;">
             <h1 class="title-font">Shared Expense Tracker</h1>
             <p>Ingestion & Validation Pipeline</p>
+
+            <!-- User Selector Widget (Login Module) -->
+            <div id="userSelectorWidget" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 10px; background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 30px; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                <label for="userSelect" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Active User:</label>
+                <select id="userSelect" style="background: rgba(15, 23, 42, 0.85); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 12px; outline: none; font-size: 0.85rem; cursor: pointer; transition: var(--transition);">
+                    <option value="" disabled selected>Loading Users...</option>
+                </select>
+                <button id="viewBalanceBtn" class="card-btn" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 20px; background: var(--accent); color: white; border: none; box-shadow: 0 4px 10px var(--accent-glow); margin: 0; font-weight: 600;">
+                    View My Balances
+                </button>
+            </div>
         </header>
 
         <!-- 1. CSV File Ingestion Section -->
@@ -694,6 +727,73 @@
         </div>
     </div>
 
+    <!-- Custom Modal for showing User Balances -->
+    <div id="balancesModal" class="modal-overlay">
+        <div class="modal-content glass-panel" style="max-width: 650px; width: 90%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+                <h3 class="title-font" id="balancesUserHeader" style="font-size: 1.5rem; font-weight: 700; margin: 0;">User Balance</h3>
+                <button class="card-btn" id="closeBalancesModalBtn" style="padding: 4px 10px; font-size: 0.95rem; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer; outline: none; transition: var(--transition);">✕</button>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="font-size: 0.9rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.35rem;">Net Balance</div>
+                <div id="modalNetBalance" style="font-size: 2.5rem; font-weight: 800; font-family: 'Outfit';">0.00 INR</div>
+                <div style="display: flex; justify-content: center; gap: 2.5rem; margin-top: 1rem;">
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2px;">Total Paid</div>
+                        <div id="modalTotalPaid" style="font-size: 1.25rem; font-weight: 700; color: var(--success); font-family: 'Outfit';">0.00 INR</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2px;">Total Owed</div>
+                        <div id="modalTotalOwed" style="font-size: 1.25rem; font-weight: 700; color: var(--error); font-family: 'Outfit';">0.00 INR</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div>
+                    <h4 class="title-font" style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span style="color: var(--error);">▼</span> Owed Expenses
+                    </h4>
+                    <div class="drilldown-scroll-container">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="padding: 6px 12px; font-size: 0.8rem;">Desc</th>
+                                    <th style="padding: 6px 12px; font-size: 0.8rem; text-align: right;">Share</th>
+                                    <th style="padding: 6px 12px; font-size: 0.8rem; text-align: right;">INR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="owedBreakdownBody">
+                                <!-- Dynamic breakdown rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="title-font" style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span style="color: var(--success);">▲</span> Paid Expenses
+                    </h4>
+                    <div class="drilldown-scroll-container">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="padding: 6px 12px; font-size: 0.8rem;">Desc</th>
+                                    <th style="padding: 6px 12px; font-size: 0.8rem; text-align: right;">Share</th>
+                                    <th style="padding: 6px 12px; font-size: 0.8rem; text-align: right;">INR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paidBreakdownBody">
+                                <!-- Dynamic breakdown rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Script layer for processing events and calling API -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
@@ -717,6 +817,149 @@
 
             const API_BASE_URL = "http://localhost:8000";
             let selectedFile = null;
+
+            // Load users list dynamically for active session selection (Login Module)
+            async function loadUsers() {
+                const select = document.getElementById("userSelect");
+                try {
+                    const response = await fetch(`${API_BASE_URL}/users/`);
+                    if (response.ok) {
+                        const users = await response.json();
+                        select.innerHTML = `<option value="" disabled selected>Select User</option>`;
+                        users.forEach(u => {
+                            const opt = document.createElement("option");
+                            opt.value = u.id;
+                            opt.textContent = u.name;
+                            select.appendChild(opt);
+                        });
+                        
+                        // Restore previously active user from localStorage if exists
+                        const storedUserId = localStorage.getItem("active_user_id");
+                        if (storedUserId) {
+                            select.value = storedUserId;
+                        }
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Failed to load users dynamically, falling back to static list", e);
+                }
+                
+                // Fallback static seeding list if backend is not seeded or running standalone
+                const staticUsers = [
+                    { id: 1, name: "Aisha" },
+                    { id: 2, name: "Rohan" },
+                    { id: 3, name: "Priya" },
+                    { id: 4, name: "Meera" },
+                    { id: 5, name: "Dev" },
+                    { id: 6, name: "Sam" }
+                ];
+                select.innerHTML = `<option value="" disabled selected>Select User</option>`;
+                staticUsers.forEach(u => {
+                    const opt = document.createElement("option");
+                    opt.value = u.id;
+                    opt.textContent = u.name;
+                    select.appendChild(opt);
+                });
+                
+                const storedUserId = localStorage.getItem("active_user_id");
+                if (storedUserId) {
+                    select.value = storedUserId;
+                }
+            }
+
+            // Load user dropdown instantly
+            loadUsers();
+
+            // Store user session choice
+            document.getElementById("userSelect").addEventListener("change", (e) => {
+                const selected_user_id = e.target.value;
+                localStorage.setItem("active_user_id", selected_user_id);
+                console.log("Active user selected ID:", selected_user_id);
+            });
+
+            // View My Balances drill-down handler
+            document.getElementById("viewBalanceBtn").addEventListener("click", async () => {
+                const select = document.getElementById("userSelect");
+                const selected_user_id = select.value;
+                if (!selected_user_id) {
+                    alert("Please select a user first.");
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/balances/${selected_user_id}`);
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || "Failed to fetch balances.");
+                    }
+                    const data = await response.json();
+                    
+                    console.log("Balance summary and drill-down data:", data);
+                    
+                    // Populate headers
+                    document.getElementById("balancesUserHeader").textContent = `Balances for ${data.user_name}`;
+                    
+                    const netVal = data.net_balance_inr;
+                    const netValEl = document.getElementById("modalNetBalance");
+                    netValEl.textContent = `${netVal >= 0 ? '+' : ''}${netVal.toFixed(2)} INR`;
+                    
+                    // Color code net balance text
+                    if (netVal > 0) {
+                        netValEl.style.color = "var(--success)";
+                    } else if (netVal < 0) {
+                        netValEl.style.color = "var(--error)";
+                    } else {
+                        netValEl.style.color = "var(--text-primary)";
+                    }
+                    
+                    document.getElementById("modalTotalPaid").textContent = `${data.total_paid_inr.toFixed(2)} INR`;
+                    document.getElementById("modalTotalOwed").textContent = `${data.total_owed_inr.toFixed(2)} INR`;
+                    
+                    // Render Owed Breakdown
+                    const owedBody = document.getElementById("owedBreakdownBody");
+                    owedBody.innerHTML = "";
+                    if (data.owed_details.length === 0) {
+                        owedBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 1.5rem 0;">No items owed.</td></tr>`;
+                    } else {
+                        data.owed_details.forEach(item => {
+                            const tr = document.createElement("tr");
+                            tr.innerHTML = `
+                                <td>${escapeHTML(item.description)}</td>
+                                <td style="text-align: right; color: var(--text-secondary);">${item.amount.toFixed(2)} ${item.currency}</td>
+                                <td style="text-align: right; font-weight: 600; color: var(--text-primary);">${item.amount_inr.toFixed(2)}</td>
+                            `;
+                            owedBody.appendChild(tr);
+                        });
+                    }
+                    
+                    // Render Paid Breakdown
+                    const paidBody = document.getElementById("paidBreakdownBody");
+                    paidBody.innerHTML = "";
+                    if (data.paid_details.length === 0) {
+                        paidBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 1.5rem 0;">No items paid.</td></tr>`;
+                    } else {
+                        data.paid_details.forEach(item => {
+                            const tr = document.createElement("tr");
+                            tr.innerHTML = `
+                                <td>${escapeHTML(item.description)}</td>
+                                <td style="text-align: right; color: var(--text-secondary);">${item.amount.toFixed(2)} ${item.currency}</td>
+                                <td style="text-align: right; font-weight: 600; color: var(--text-primary);">${item.amount_inr.toFixed(2)}</td>
+                            `;
+                            paidBody.appendChild(tr);
+                        });
+                    }
+                    
+                    // Open Modal
+                    document.getElementById("balancesModal").classList.add("active");
+                } catch (error) {
+                    alert(`Error fetching balances: ${error.message}`);
+                }
+            });
+
+            // Modal Close Handler for Balances Modal
+            document.getElementById("closeBalancesModalBtn").addEventListener("click", () => {
+                document.getElementById("balancesModal").classList.remove("active");
+            });
 
             // Setup File drag and drop visual listeners
             dropZone.addEventListener("click", () => csvFileInput.click());

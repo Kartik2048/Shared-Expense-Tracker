@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.database import engine, get_db
-from app.routers import ingestion, staging_actions
+from app.routers import ingestion, staging_actions, balances
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -25,6 +25,7 @@ app.add_middleware(
 
 app.include_router(ingestion.router)
 app.include_router(staging_actions.router)
+app.include_router(balances.router)
 
 @app.post("/users/", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -38,6 +39,14 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
     return crud.create_user(db=db, user=user)
+
+
+@app.get("/users/", response_model=list[schemas.UserResponse], status_code=status.HTTP_200_OK)
+def read_users(db: Session = Depends(get_db)):
+    """
+    Retrieve all registered Users.
+    """
+    return db.query(models.User).all()
 
 
 @app.post("/groups/", response_model=schemas.GroupResponse, status_code=status.HTTP_201_CREATED)

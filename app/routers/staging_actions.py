@@ -212,20 +212,29 @@ def approve_staging_expense(row_id: int, db: Session = Depends(get_db)):
             delimiter = ";" if ";" in staging.raw_split_details else ","
             parts = [p.strip() for p in staging.raw_split_details.split(delimiter) if p.strip()]
             for part in parts:
+                part = part.strip()
                 if ":" in part:
-                    name_key, val_str = part.split(":", 1)
-                    name_key = name_key.strip().lower()
-                    try:
-                        splits_dict[name_key] = Decimal(val_str.strip())
-                    except (InvalidOperation, ValueError):
+                    name_part, val_part = part.split(":", 1)
+                else:
+                    # Robust separation of name and value using right-side split on whitespace
+                    split_parts = part.rsplit(None, 1)
+                    if len(split_parts) == 2:
+                        name_part, val_part = split_parts
+                    else:
                         raise HTTPException(
                             status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Could not parse split details amount: '{part}'"
+                            detail=f"Invalid split details format: '{part}'"
                         )
-                else:
+                
+                name_key = name_part.strip().lower()
+                # Remove trailing % symbols if present
+                val_str = val_part.strip().rstrip("%").strip()
+                try:
+                    splits_dict[name_key] = Decimal(val_str)
+                except (InvalidOperation, ValueError):
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Invalid split details format: '{part}'"
+                        detail=f"Could not parse split details amount: '{part}'"
                     )
         return splits_dict
 
