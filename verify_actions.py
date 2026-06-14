@@ -141,9 +141,9 @@ def test_staging_actions():
     print(f"Response: {response.json()}")
     assert response.status_code == 200
     
-    # Verify row 3 is gone
+    # Verify row 3 is discarded
     staging_row3 = db.query(StagingExpense).filter(StagingExpense.id == 3).first()
-    assert staging_row3 is None, "Staging row 3 should be discarded!"
+    assert staging_row3 is not None and staging_row3.status == "discarded", "Staging row 3 status should be 'discarded'"
     
     print("\n--- 3. Testing APPROVE Staging Expense (POST) - Equal USD Splits ---")
     # Row 2 is 100.00 USD. Rate should be 83.5. Equal splits for rohan and kartik (50.00 each)
@@ -166,9 +166,9 @@ def test_staging_actions():
         assert s.amount == Decimal("50.0000")
         print(f" -> Split created: User ID {s.user_id} owes {s.amount}")
         
-    # Verify Row 2 is deleted from staging
+    # Verify Row 2 is marked as approved in staging
     staging_row2 = db.query(StagingExpense).filter(StagingExpense.id == 2).first()
-    assert staging_row2 is None
+    assert staging_row2 is not None and staging_row2.status == "approved"
 
     print("\n--- 4. Testing APPROVE Staging Expense (POST) - Penny Rounding Remainder (100.00 / 3) ---")
     # Row 4 is 100.00 INR equal splits for 3 users (kartik, aisha, rohan)
@@ -195,9 +195,9 @@ def test_staging_actions():
     assert splits_rounded[1].amount == Decimal("33.3300")
     assert splits_rounded[2].amount == Decimal("33.3300")
     
-    # Verify Row 4 is deleted from staging
+    # Verify Row 4 is marked as approved in staging
     staging_row4 = db.query(StagingExpense).filter(StagingExpense.id == 4).first()
-    assert staging_row4 is None
+    assert staging_row4 is not None and staging_row4.status == "approved"
     
     print("\n--- 5. Testing APPROVE Staging Expense (POST) - Exact Split Space Parsing & Names With Spaces ---")
     # Row 1 has exact splits: "kartik 400; aisha 400; priya s 400"
@@ -216,9 +216,9 @@ def test_staging_actions():
         assert s.amount == Decimal("400.0000")
         print(f" -> Split created: User ID {s.user_id} owes {s.amount}")
         
-    # Verify Row 1 is deleted from staging
+    # Verify Row 1 is marked as approved in staging
     staging_row1 = db.query(StagingExpense).filter(StagingExpense.id == 1).first()
-    assert staging_row1 is None
+    assert staging_row1 is not None and staging_row1.status == "approved"
 
     print("\n--- 6. Testing GET /balances/{user_id} ---")
     # Fetch Kartik's balance (User ID 1)
@@ -233,6 +233,15 @@ def test_staging_actions():
     assert res_json["net_balance_inr"] == -3308.34
     assert len(res_json["paid_details"]) == 2
     assert len(res_json["owed_details"]) == 3
+
+    print("\n--- 7. Testing GET /staging/report/download ---")
+    response = client.get("/staging/report/download", headers=headers)
+    print(f"Status Code: {response.status_code}")
+    print("Response snippet (first 300 characters):")
+    print(response.text[:300])
+    assert response.status_code == 200
+    assert "SHARED EXPENSES IMPORT REPORT" in response.text
+    assert "Total Rows Processed: 4" in response.text
 
     db.close()
     print("\nStaging actions (Discard, Modify, Approve) and Balances verified successfully!")
