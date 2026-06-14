@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 # Force SQLite database file for testing
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 
-# Ensure we can import TestClient.
 try:
     from fastapi.testclient import TestClient
 except (ImportError, RuntimeError):
@@ -21,21 +20,20 @@ client = TestClient(app)
 def test_api():
     print("1. Testing User Creation...")
     user_data = {
-        "username": "kartik_api",
-        "email": "kartik_api@example.com",
-        "password": "secret_password"
+        "name": "kartik_api",
+        "email": "kartik_api@example.com"
     }
     response = client.post("/users/", json=user_data)
     print(f"Status Code: {response.status_code}")
     print(f"Response: {response.json()}")
     assert response.status_code == 201
     user_json = response.json()
-    assert user_json["username"] == "kartik_api"
+    assert user_json["name"] == "kartik_api"
     assert user_json["email"] == "kartik_api@example.com"
     assert "id" in user_json
     user_id = user_json["id"]
 
-    # Test duplicate username validation
+    # Test duplicate email validation
     print("\n1b. Testing duplicate user validation...")
     response_dup = client.post("/users/", json=user_data)
     print(f"Duplicate user Status Code: {response_dup.status_code}")
@@ -44,8 +42,7 @@ def test_api():
 
     print("\n2. Testing Group Creation...")
     group_data = {
-        "name": "Skiing Trip 2026",
-        "description": "Shared costs for the ski lodge and passes"
+        "name": "Skiing Trip 2026"
     }
     response = client.post("/groups/", json=group_data)
     print(f"Status Code: {response.status_code}")
@@ -69,7 +66,6 @@ def test_api():
     member_json = response.json()
     assert member_json["group_id"] == group_id
     assert member_json["user_id"] == user_id
-    # Asserting timezone-naive format returned from database
     assert member_json["joined_at"].startswith("2026-05-15T09:30:00")
 
     print("\n3b. Testing duplicate member validation...")

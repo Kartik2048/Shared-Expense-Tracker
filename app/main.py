@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.database import engine, get_db
+from app.routers import ingestion
 
 # Auto-create tables (SQLite/MySQL) on application start
 models.Base.metadata.create_all(bind=engine)
@@ -12,22 +13,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.include_router(ingestion.router)
+
 @app.post("/users/", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """
-    Register a new User. Checks for email and username uniqueness.
+    Register a new User. Checks for email uniqueness.
     """
     db_user_email = crud.get_user_by_email(db, email=user.email)
     if db_user_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
-        )
-    db_user_username = crud.get_user_by_username(db, username=user.username)
-    if db_user_username:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
         )
     return crud.create_user(db=db, user=user)
 
@@ -59,7 +56,6 @@ def add_user_to_group(group_id: int, member_data: schemas.GroupMemberAdd, db: Se
             detail="User not found"
         )
     
-    # Optional: check if user is already an active member of this group
     for existing in db_group.members:
         if existing.user_id == member_data.user_id and existing.left_at is None:
             raise HTTPException(

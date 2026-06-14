@@ -16,14 +16,12 @@ def run_verification():
     try:
         print("Creating mock users...")
         kartik = User(
-            username="kartik",
-            email="kartik@example.com",
-            hashed_password="hashedpassword_kartik"
+            name="kartik",
+            email="kartik@example.com"
         )
         alice = User(
-            username="alice",
-            email="alice@example.com",
-            hashed_password="hashedpassword_alice"
+            name="alice",
+            email="alice@example.com"
         )
         db.add_all([kartik, alice])
         db.commit()
@@ -33,8 +31,7 @@ def run_verification():
         
         print("Creating mock group...")
         apartment_group = Group(
-            name="Apartment 204",
-            description="Shared expenses for Room 204"
+            name="Apartment 204"
         )
         db.add(apartment_group)
         db.commit()
@@ -63,7 +60,7 @@ def run_verification():
         print(f"Group member count: {len(apartment_group.members)}")
         for m in apartment_group.members:
             status = f"Left at: {m.left_at}" if m.left_at else "Active member"
-            print(f" - Member User ID {m.user_id} ({m.user.username}): Joined at {m.joined_at}, {status}")
+            print(f" - Member User ID {m.user_id} ({m.user.name}): Joined at {m.joined_at}, {status}")
             assert m.joined_at is not None
             if m.user_id == alice.id:
                 assert m.left_at == datetime(2026, 3, 1, 12, 0)
@@ -76,7 +73,9 @@ def run_verification():
             amount=Decimal("49.99"),
             currency="USD",
             exchange_rate_to_inr=Decimal("83.45000000"),
-            date=datetime(2026, 2, 1, 10, 0)
+            date=datetime(2026, 2, 1, 10, 0),
+            split_type="exact",
+            notes="Consolidated bill"
         )
         db.add(internet_expense)
         db.commit()
@@ -102,7 +101,7 @@ def run_verification():
         print(f"Expense splits count: {len(internet_expense.splits)}")
         total_split = Decimal("0.0")
         for s in internet_expense.splits:
-            print(f" - User {s.user.username} owes {s.amount} of the expense.")
+            print(f" - User {s.user.name} owes {s.amount} of the expense.")
             total_split += s.amount
         assert total_split == internet_expense.amount, f"Splits sum {total_split} != expense amount {internet_expense.amount}"
         
@@ -114,12 +113,12 @@ def run_verification():
             amount=Decimal("2085.42"),  # 24.99 USD * 83.45 in INR
             currency="INR",
             exchange_rate_to_inr=Decimal("1.00000000"),
-            status="completed"
+            date=datetime(2026, 2, 2, 12, 0)
         )
         db.add(settlement)
         db.commit()
         db.refresh(settlement)
-        print(f"Settlement: User {settlement.payer.username} settled {settlement.amount} {settlement.currency} to {settlement.payee.username}. Status: {settlement.status}")
+        print(f"Settlement: User {settlement.payer.name} settled {settlement.amount} {settlement.currency} to {settlement.payee.name}.")
         assert settlement.payer_id == alice.id
         assert settlement.payee_id == kartik.id
         
@@ -130,8 +129,10 @@ def run_verification():
             raw_currency="USD",
             raw_date="2026-06-12",
             raw_paid_by="kartik",
-            raw_group_name="Apartment 204",
-            raw_splits="kartik:600,alice:600",
+            raw_split_type="equal",
+            raw_split_with="kartik,alice",
+            raw_split_details="kartik:600,alice:600",
+            raw_notes="June rent",
             status="pending",
             anomaly_flags={"warnings": ["User 'alice' is marked as having left the group."]}
         )

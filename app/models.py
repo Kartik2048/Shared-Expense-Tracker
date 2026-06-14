@@ -11,11 +11,8 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=utc_now, nullable=False)
-    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     group_memberships = relationship("GroupMember", back_populates="user", cascade="all, delete-orphan")
@@ -41,9 +38,6 @@ class Group(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False)
-    description = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=utc_now, nullable=False)
-    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     members = relationship("GroupMember", back_populates="group", cascade="all, delete-orphan")
@@ -58,7 +52,7 @@ class GroupMember(Base):
     group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     joined_at = Column(DateTime, default=utc_now, nullable=False)
-    left_at = Column(DateTime, nullable=True)  # Track people moving in and out
+    left_at = Column(DateTime, nullable=True)
 
     # Relationships
     group = relationship("Group", back_populates="members")
@@ -70,16 +64,14 @@ class Expense(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
-    paid_by_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     description = Column(String(255), nullable=False)
-    
-    # Financial fields: Numeric handles decimal accuracy for currency
     amount = Column(Numeric(12, 4), nullable=False)
     currency = Column(String(3), default="INR", nullable=False)
     exchange_rate_to_inr = Column(Numeric(18, 8), default=1.0, nullable=False)
-    
-    created_at = Column(DateTime, default=utc_now, nullable=False)
     date = Column(DateTime, default=utc_now, nullable=False)
+    paid_by_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    split_type = Column(String(50), nullable=False)
+    notes = Column(Text, nullable=True)
 
     # Relationships
     group = relationship("Group", back_populates="expenses")
@@ -107,13 +99,10 @@ class Settlement(Base):
     group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
     payer_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     payee_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    
     amount = Column(Numeric(12, 4), nullable=False)
     currency = Column(String(3), default="INR", nullable=False)
     exchange_rate_to_inr = Column(Numeric(18, 8), default=1.0, nullable=False)
-    
-    status = Column(String(20), default="pending", nullable=False)
-    created_at = Column(DateTime, default=utc_now, nullable=False)
+    date = Column(DateTime, default=utc_now, nullable=False)
 
     # Relationships
     group = relationship("Group", back_populates="settlements")
@@ -122,23 +111,17 @@ class Settlement(Base):
 
 
 class StagingExpense(Base):
-    """
-    Staging model for raw CSV inputs. 
-    All fields are strings to allow unstructured raw data ingestion, 
-    plus status tracking and anomaly flagging.
-    """
     __tablename__ = "staging_expenses"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    raw_date = Column(String(100), nullable=True)
     raw_description = Column(String(255), nullable=True)
+    raw_paid_by = Column(String(100), nullable=True)
     raw_amount = Column(String(50), nullable=True)
     raw_currency = Column(String(50), nullable=True)
-    raw_date = Column(String(100), nullable=True)
-    raw_paid_by = Column(String(100), nullable=True)
-    raw_group_name = Column(String(100), nullable=True)
-    raw_splits = Column(Text, nullable=True)
-    
+    raw_split_type = Column(String(50), nullable=True)
+    raw_split_with = Column(Text, nullable=True)
+    raw_split_details = Column(Text, nullable=True)
+    raw_notes = Column(Text, nullable=True)
     status = Column(String(50), default="pending", nullable=False)
-    anomaly_flags = Column(JSON, nullable=True)  # Stores JSON validation findings (e.g. invalid decimals, missing users)
-    
-    created_at = Column(DateTime, default=utc_now, nullable=False)
+    anomaly_flags = Column(JSON, nullable=True)
