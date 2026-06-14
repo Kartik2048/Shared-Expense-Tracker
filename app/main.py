@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.database import engine, get_db
@@ -26,13 +27,19 @@ app.add_middleware(
 )
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SESSION_SECRET", "super-secret-starlette-session-key-change-in-prod")
+    secret_key=os.getenv("JWT_SECRET", "fallback-secret")
 )
 
 app.include_router(auth.router)
 app.include_router(ingestion.router)
 app.include_router(staging_actions.router)
 app.include_router(balances.router)
+
+@app.get("/", response_class=HTMLResponse)
+def read_root():
+    index_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "index.html")
+    with open(index_path, "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
 
 @app.post("/users/", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):

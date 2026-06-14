@@ -70,12 +70,6 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     }
     jwt_token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     
-    # Redirect back to the frontend with ?token= in the query parameters
-    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:8000/')
-    # Strip any existing query params or hash if simple concat
-    if "?" in frontend_url:
-        redirect_url = f"{frontend_url}&token={jwt_token}"
-    else:
-        redirect_url = f"{frontend_url}?token={jwt_token}"
-        
+    # Redirect back to the frontend using a relative URL path to support monolithic hosting
+    redirect_url = f"/?token={jwt_token}"
     return RedirectResponse(url=redirect_url)
