@@ -2,7 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.database import engine, get_db
-from app.routers import ingestion
+from app.routers import ingestion, staging_actions
+
+from fastapi.middleware.cors import CORSMiddleware
 
 # Auto-create tables (SQLite/MySQL) on application start
 models.Base.metadata.create_all(bind=engine)
@@ -13,7 +15,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(ingestion.router)
+app.include_router(staging_actions.router)
 
 @app.post("/users/", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):

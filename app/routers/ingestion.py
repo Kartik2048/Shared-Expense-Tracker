@@ -22,6 +22,9 @@ def upload_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
     the StagingExpense table as raw strings with 'pending' status,
     runs the validation engine, and returns validation summary and data.
     """
+    # Wipe the old staging batch
+    db.query(models.StagingExpense).delete()
+    
     # Read file contents and convert from bytes to a text stream
     content = file.file.read().decode("utf-8-sig")  # utf-8-sig handles byte-order-mark (BOM) cleanly
     csv_file = StringIO(content)

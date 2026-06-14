@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Shared Expenses CSV Ingestion and Anomaly Validation Dashboard.">
+    <title>Import Report Dashboard - Shared Expenses</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* CSS Core Variables & Theme Reset */
+        :root {
+            --bg-color: #0b0f19;
+            --bg-gradient: radial-gradient(circle at top, #1e1b4b 0%, #020617 100%);
+            --panel-bg: rgba(30, 41, 59, 0.45);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.35);
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --error: #f43f5e;
+            --error-bg: rgba(244, 63, 94, 0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-color);
+            background-image: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            overflow-x: hidden;
+            padding: 2rem 1rem;
+        }
+
+        h1, h2, h3, .title-font {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 50%, #6366f1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* Glassmorphism Panel Wrapper */
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-lg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            padding: 2.5rem;
+        }
+
+        /* 1. Ingestion / Upload Section */
+        .upload-section {
+            text-align: center;
+            max-width: 650px;
+            margin: 0 auto;
+            transform: translateY(0);
+            transition: var(--transition);
+        }
+
+        .upload-section.hidden {
+            display: none;
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(99, 102, 241, 0.4);
+            background: rgba(99, 102, 241, 0.03);
+            border-radius: var(--radius-lg);
+            padding: 3.5rem 2rem;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.08);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .drop-zone-icon {
+            font-size: 3rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            display: inline-block;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .drop-zone h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .drop-zone p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .drop-zone input[type="file"] {
+            display: none;
+        }
+
+        .selected-file-badge {
+            margin-top: 1rem;
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        /* Elegant Action Buttons */
+        .btn {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: #fff;
+            border: none;
+            padding: 0.85rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            outline: none;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.55);
+            filter: brightness(1.1);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+        }
+
+        /* Loading / Processing Spinner overlay */
+        .spinner {
+            display: none;
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 2. Dashboard View Layout */
+        .dashboard-section {
+            display: none;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .dashboard-section.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            box-shadow: none;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            box-shadow: none;
+            transform: translateX(-4px);
+        }
+
+        /* Metrics summary widgets */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .metric-card {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--accent);
+        }
+
+        .metric-card.valid-card::before {
+            background: var(--success);
+        }
+
+        .metric-card.flagged-card::before {
+            background: var(--error);
+        }
+
+        .metric-card h4 {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .metric-card .value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Two-Column Grid split */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1.3fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .grid-col-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 0.8rem;
+        }
+
+        .grid-col-header h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Valid Container Tables */
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-md);
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(30, 41, 59, 0.8);
+            color: var(--text-primary);
+            padding: 0.85rem 1rem;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+            color: #fff;
+        }
+
+        /* Anomalies Card Layouts */
+        .anomalies-container {
+            max-height: 500px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding-right: 0.3rem;
+        }
+
+        .anomaly-card {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+            border-left: 4px solid var(--error);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            transition: var(--transition);
+        }
+
+        .anomaly-card:hover {
+            transform: translateX(3px);
+            border-color: rgba(244, 63, 94, 0.4);
+            background: rgba(30, 41, 59, 0.55);
+        }
+
+        .anomaly-meta {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem 1rem;
+            font-size: 0.88rem;
+        }
+
+        .anomaly-meta-item {
+            color: var(--text-secondary);
+        }
+
+        .anomaly-meta-item strong {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .description-tag {
+            grid-column: span 2;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            margin-bottom: 0.2rem;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+            padding-bottom: 0.4rem;
+        }
+
+        /* Dynamic Flags Blocks */
+        .flags-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            background: rgba(0, 0, 0, 0.15);
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .flag-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.4rem;
+            font-size: 0.82rem;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .flag-item.error-flag {
+            color: var(--error);
+        }
+
+        .flag-item.warning-flag {
+            color: var(--warning);
+        }
+
+        .flag-bullet {
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        /* Card Controls */
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            margin-top: 0.2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 0.75rem;
+        }
+
+        .card-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            padding: 0.45rem 0.85rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            outline: none;
+        }
+
+        .card-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .card-btn-discard:hover {
+            background: var(--error-bg);
+            border-color: rgba(244, 63, 94, 0.3);
+            color: var(--error);
+        }
+
+        .card-btn-approve:hover {
+            background: var(--success-bg);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: var(--success);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Dashboard Header -->
+        <header>
+            <h1 class="title-font">Shared Expense Tracker</h1>
+            <p>Ingestion & Validation Pipeline</p>
+        </header>
+
+        <!-- 1. CSV File Ingestion Section -->
+        <section class="glass-panel upload-section" id="uploadSection">
+            <h2 class="title-font" style="margin-bottom: 1.5rem; font-size: 1.8rem; font-weight: 700;">CSV Upload & Analysis</h2>
+            
+            <div class="drop-zone" id="dropZone">
+                <span class="drop-zone-icon">📥</span>
+                <h3>Drag & Drop CSV file here</h3>
+                <p>or click to browse local files</p>
+                <input type="file" id="csvFileInput" accept=".csv">
+                
+                <div class="selected-file-badge" id="fileBadge">
+                    <span style="font-size: 1.1rem;">📄</span>
+                    <span id="fileNameText">no file selected</span>
+                </div>
+            </div>
+
+            <button class="btn" id="uploadBtn" disabled>
+                <span>Analyze Dataset</span>
+                <span class="spinner" id="btnSpinner"></span>
+            </button>
+        </section>
+
+        <!-- 2. Interactive Ingestion Report Dashboard -->
+        <section class="dashboard-section" id="dashboardSection">
+            <div class="dashboard-header">
+                <button class="btn btn-back" id="backToUploadBtn">
+                    <span>← Upload New File</span>
+                </button>
+                <h2 class="title-font" style="font-size: 1.8rem; font-weight: 700; margin: 0;">Import Report</h2>
+                <div style="width: 130px;"></div> <!-- visual spacing balance -->
+            </div>
+
+            <!-- Summary metrics cards -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h4>Total Ingested</h4>
+                    <span class="value" id="metricTotal">0</span>
+                </div>
+                <div class="metric-card valid-card">
+                    <h4>Valid Records</h4>
+                    <span class="value" id="metricValid" style="color: var(--success);">0</span>
+                </div>
+                <div class="metric-card flagged-card">
+                    <h4>Anomalies Detected</h4>
+                    <span class="value" id="metricFlagged" style="color: var(--error);">0</span>
+                </div>
+            </div>
+
+            <!-- Dashboard Split Column Views -->
+            <div class="dashboard-grid">
+                
+                <!-- Left: Valid Records Table -->
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div class="grid-col-header">
+                        <h2>
+                            <span style="color: var(--success); font-size: 1.3rem;">✓</span>
+                            <span>Valid Records</span>
+                        </h2>
+                        <button class="btn btn-success" id="approveAllBtn" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; box-shadow: none;">
+                            <span>Approve All Valid</span>
+                        </button>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Paid By</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="validRecordsTableBody">
+                                <!-- Dynamic records rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Right: Anomaly Detected Cards List -->
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div class="grid-col-header">
+                        <h2>
+                            <span style="color: var(--error); font-size: 1.3rem;">⚠️</span>
+                            <span>Anomalies Detected</span>
+                        </h2>
+                    </div>
+                    
+                    <div class="anomalies-container" id="anomaliesContainer">
+                        <!-- Dynamic anomaly cards injected here -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <!-- Script layer for processing events and calling API -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Setup DOM nodes
+            const uploadSection = document.getElementById("uploadSection");
+            const csvFileInput = document.getElementById("csvFileInput");
+            const dropZone = document.getElementById("dropZone");
+            const fileBadge = document.getElementById("fileBadge");
+            const fileNameText = document.getElementById("fileNameText");
+            const uploadBtn = document.getElementById("uploadBtn");
+            const btnSpinner = document.getElementById("btnSpinner");
+            
+            const dashboardSection = document.getElementById("dashboardSection");
+            const backToUploadBtn = document.getElementById("backToUploadBtn");
+            const metricTotal = document.getElementById("metricTotal");
+            const metricValid = document.getElementById("metricValid");
+            const metricFlagged = document.getElementById("metricFlagged");
+            const validRecordsTableBody = document.getElementById("validRecordsTableBody");
+            const anomaliesContainer = document.getElementById("anomaliesContainer");
+            const approveAllBtn = document.getElementById("approveAllBtn");
+
+            const API_BASE_URL = "http://localhost:8000";
+            let selectedFile = null;
+
+            // Setup File drag and drop visual listeners
+            dropZone.addEventListener("click", () => csvFileInput.click());
+            
+            dropZone.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                dropZone.classList.add("dragover");
+            });
+
+            ["dragleave", "dragend"].forEach(type => {
+                dropZone.addEventListener(type, () => {
+                    dropZone.classList.remove("dragover");
+                });
+            });
+
+            dropZone.addEventListener("drop", (e) => {
+                e.preventDefault();
+                dropZone.classList.remove("dragover");
+                
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileSelect(e.dataTransfer.files[0]);
+                }
+            });
+
+            csvFileInput.addEventListener("change", (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            });
+
+            function handleFileSelect(file) {
+                if (!file.name.endsWith(".csv")) {
+                    alert("Please select a valid CSV file.");
+                    resetUploadZone();
+                    return;
+                }
+                selectedFile = file;
+                fileNameText.textContent = file.name;
+                fileBadge.style.display = "inline-flex";
+                uploadBtn.disabled = false;
+            }
+
+            function resetUploadZone() {
+                selectedFile = null;
+                csvFileInput.value = "";
+                fileNameText.textContent = "no file selected";
+                fileBadge.style.display = "none";
+                uploadBtn.disabled = true;
+            }
+
+            // Upload action triggering API call
+            uploadBtn.addEventListener("click", async () => {
+                if (!selectedFile) return;
+
+                uploadBtn.disabled = true;
+                btnSpinner.style.display = "inline-block";
+
+                const formData = new FormData();
+                formData.append("file", selectedFile);
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/upload-csv`, {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        const errorDetails = await response.json();
+                        throw new Error(errorDetails.detail || "Upload or validation failed.");
+                    }
+
+                    const result = await response.json();
+                    renderDashboard(result);
+
+                } catch (error) {
+                    console.error("Ingestion failed:", error);
+                    alert(`Ingestion failed: ${error.message}`);
+                    uploadBtn.disabled = false;
+                } finally {
+                    btnSpinner.style.display = "none";
+                }
+            });
+
+            // Navigate back from dashboard screen to upload screen
+            backToUploadBtn.addEventListener("click", () => {
+                dashboardSection.classList.remove("active");
+                uploadSection.classList.remove("hidden");
+                resetUploadZone();
+            });
+
+            // Refresh dashboard by querying staging records
+            async function refreshDashboard() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/staging`);
+                    if (!response.ok) throw new Error("Failed to fetch current staging status.");
+                    const result = await response.json();
+                    renderDashboard(result);
+                } catch (error) {
+                    console.error("Dashboard refresh failed:", error);
+                }
+            }
+
+            // Render dashboard dataset
+            function renderDashboard(payload) {
+                // Clear previous renders
+                validRecordsTableBody.innerHTML = "";
+                anomaliesContainer.innerHTML = "";
+
+                const summary = payload.summary;
+                const data = payload.data;
+
+                // Load metrics values
+                metricTotal.textContent = summary.total_ingested;
+                metricValid.textContent = summary.valid_count;
+                metricFlagged.textContent = summary.flagged_count;
+
+                // Disable "Approve All Valid" if no valid rows exist
+                approveAllBtn.disabled = summary.valid_count === 0;
+
+                // Separate and populate list segments
+                data.forEach(row => {
+                    if (row.status === "valid") {
+                        // Ingest valid row into table
+                        const tr = document.createElement("tr");
+                        tr.dataset.id = row.id; // Store ID for "Approve All" lookup
+                        tr.innerHTML = `
+                            <td>${escapeHTML(row.raw_date || '-')}</td>
+                            <td>${escapeHTML(row.raw_description || '-')}</td>
+                            <td>${escapeHTML(row.raw_paid_by || '-')}</td>
+                            <td><strong>${escapeHTML(row.raw_amount || '-')}</strong> ${escapeHTML(row.raw_currency || 'INR')}</td>
+                        `;
+                        validRecordsTableBody.appendChild(tr);
+                    } else if (row.status === "flagged") {
+                        // Ingest flagged row card
+                        const card = document.createElement("div");
+                        card.className = "anomaly-card";
+                        
+                        // Parse warning & error listings
+                        let flagsHTML = "";
+                        const errors = row.anomaly_flags?.errors || [];
+                        const warnings = row.anomaly_flags?.warnings || [];
+
+                        if (errors.length > 0 || warnings.length > 0) {
+                            flagsHTML = `<div class="flags-list">`;
+                            
+                            errors.forEach(err => {
+                                flagsHTML += `
+                                    <div class="flag-item error-flag">
+                                        <span class="flag-bullet">❌</span>
+                                        <span><strong>Error:</strong> ${escapeHTML(err.message)}</span>
+                                    </div>
+                                `;
+                            });
+
+                            warnings.forEach(wrn => {
+                                flagsHTML += `
+                                    <div class="flag-item warning-flag">
+                                        <span class="flag-bullet">⚠️</span>
+                                        <span><strong>Warning:</strong> ${escapeHTML(wrn.message)}</span>
+                                    </div>
+                                `;
+                            });
+
+                            flagsHTML += `</div>`;
+                        }
+
+                        card.innerHTML = `
+                            <div class="anomaly-meta">
+                                <div class="description-tag">${escapeHTML(row.raw_description || 'No Description')}</div>
+                                <div class="anomaly-meta-item">Date: <strong>${escapeHTML(row.raw_date || '-')}</strong></div>
+                                <div class="anomaly-meta-item">Payer: <strong>${escapeHTML(row.raw_paid_by || '-')}</strong></div>
+                                <div class="anomaly-meta-item">Amount: <strong>${escapeHTML(row.raw_amount || '-')}</strong> ${escapeHTML(row.raw_currency || 'INR')}</div>
+                                <div class="anomaly-meta-item">Split Type: <strong>${escapeHTML(row.raw_split_type || '-')}</strong></div>
+                            </div>
+                            ${flagsHTML}
+                            <div class="card-actions">
+                                <button class="card-btn card-btn-discard" data-id="${row.id}" data-action="discard">Discard</button>
+                                <button class="card-btn" data-id="${row.id}" data-action="modify">Modify</button>
+                                <button class="card-btn card-btn-approve" data-id="${row.id}" data-action="force-approve">Force Approve</button>
+                            </div>
+                        `;
+                        anomaliesContainer.appendChild(card);
+                    }
+                });
+
+                // Toggle visibility states
+                uploadSection.classList.add("hidden");
+                dashboardSection.classList.add("active");
+            }
+
+            // Global dashboard interactions delegation
+            document.body.addEventListener("click", (e) => {
+                const target = e.target;
+                
+                // Card actions
+                if (target.classList.contains("card-btn") || (target.tagName === "BUTTON" && target.dataset.action)) {
+                    const action = target.dataset.action;
+                    const rowId = target.dataset.id;
+                    if (action && rowId) {
+                        if (action === "discard") {
+                            if (confirm("Are you sure you want to discard this record?")) {
+                                fetch(`${API_BASE_URL}/staging/${rowId}`, {
+                                    method: "DELETE"
+                                })
+                                .then(res => {
+                                    if (!res.ok) throw new Error("Failed to discard record.");
+                                    return res.json();
+                                })
+                                .then(() => {
+                                    const card = target.closest(".anomaly-card");
+                                    if (card) card.remove();
+                                    showToast("Staging record discarded successfully.");
+                                    refreshDashboard();
+                                })
+                                .catch(err => {
+                                    alert(`Error discarding record: ${err.message}`);
+                                });
+                            }
+                        } else if (action === "force-approve") {
+                            fetch(`${API_BASE_URL}/staging/${rowId}/approve`, {
+                                method: "POST"
+                            })
+                            .then(res => {
+                                if (!res.ok) {
+                                    return res.json().then(err => {
+                                        throw new Error(err.detail || "Failed to approve record.");
+                                    });
+                                }
+                                return res.json();
+                            })
+                            .then(data => {
+                                const card = target.closest(".anomaly-card");
+                                if (card) card.remove();
+                                showToast(`Record Approved! Promoted to production Expense ID: ${data.expense_id}`);
+                                refreshDashboard();
+                            })
+                            .catch(err => {
+                                alert(`Error approving record: ${err.message}`);
+                            });
+                        } else if (action === "modify") {
+                            const newAmount = prompt("Enter new amount (leave blank to keep current):");
+                            const newPayer = prompt("Enter new payer (leave blank to keep current):");
+                            
+                            const payload = {};
+                            if (newAmount !== null && newAmount.trim() !== "") {
+                                payload.raw_amount = newAmount.trim();
+                            }
+                            if (newPayer !== null && newPayer.trim() !== "") {
+                                payload.raw_paid_by = newPayer.trim();
+                            }
+                            
+                            if (Object.keys(payload).length === 0) {
+                                if (newAmount === null || newPayer === null) return; // Prompt cancelled
+                                alert("No updates provided.");
+                                return;
+                            }
+                            
+                            fetch(`${API_BASE_URL}/staging/${rowId}`, {
+                                method: "PUT",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify(payload)
+                            })
+                            .then(res => {
+                                if (!res.ok) {
+                                    return res.json().then(err => {
+                                        throw new Error(err.detail || "Failed to update record.");
+                                    });
+                                }
+                                return res.json();
+                            })
+                            .then(updatedRow => {
+                                showToast(`Record ID ${rowId} updated successfully.`);
+                                refreshDashboard();
+                            })
+                            .catch(err => {
+                                alert(`Error modifying record: ${err.message}`);
+                            });
+                        }
+                    }
+                }
+            });
+
+            // Action: Approve all valid rows listener
+            approveAllBtn.addEventListener("click", async () => {
+                const rows = Array.from(validRecordsTableBody.querySelectorAll("tr"));
+                if (rows.length === 0) {
+                    alert("No valid records to approve.");
+                    return;
+                }
+
+                approveAllBtn.disabled = true;
+                let approvedCount = 0;
+                
+                const promises = rows.map(async (row) => {
+                    const rowId = row.dataset.id;
+                    if (!rowId) return;
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/staging/${rowId}/approve`, {
+                            method: "POST"
+                        });
+                        if (response.ok) {
+                            row.remove();
+                            approvedCount++;
+                        } else {
+                            const err = await response.json();
+                            alert(`Failed to approve record ID ${rowId}: ${err.detail || 'Unknown error'}`);
+                        }
+                    } catch (error) {
+                        alert(`Error approving record ID ${rowId}: ${error.message}`);
+                    }
+                });
+
+                await Promise.all(promises);
+                if (approvedCount > 0) {
+                    showToast(`Successfully approved ${approvedCount} records!`);
+                }
+                refreshDashboard();
+            });
+
+            // Toast UI Alert Helper
+            function showToast(message) {
+                const container = document.getElementById("toastContainer") || createToastContainer();
+                const toast = document.createElement("div");
+                toast.style.background = "rgba(99, 102, 241, 0.95)";
+                toast.style.color = "white";
+                toast.style.padding = "12px 24px";
+                toast.style.borderRadius = "8px";
+                toast.style.boxShadow = "0 10px 25px rgba(0,0,0,0.3)";
+                toast.style.fontSize = "0.9rem";
+                toast.style.fontWeight = "600";
+                toast.style.backdropFilter = "blur(8px)";
+                toast.style.border = "1px solid rgba(255, 255, 255, 0.1)";
+                toast.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+                toast.style.opacity = "0";
+                toast.style.transform = "translateY(20px)";
+                toast.innerText = message;
+                
+                container.appendChild(toast);
+                
+                // Force reflow
+                toast.offsetHeight;
+                
+                toast.style.opacity = "1";
+                toast.style.transform = "translateY(0)";
+                
+                setTimeout(() => {
+                    toast.style.opacity = "0";
+                    toast.style.transform = "translateY(-20px)";
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 3500);
+            }
+
+            function createToastContainer() {
+                const container = document.createElement("div");
+                container.id = "toastContainer";
+                container.style.position = "fixed";
+                container.style.bottom = "20px";
+                container.style.right = "20px";
+                container.style.zIndex = "1000";
+                container.style.display = "flex";
+                container.style.flexDirection = "column";
+                container.style.gap = "10px";
+                document.body.appendChild(container);
+                return container;
+            }
+
+            // Simple HTML escape helper to prevent XSS injection from CSV contents
+            function escapeHTML(str) {
+                if (str === null || str === undefined) return "";
+                return String(str)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+        });
+    </script>
+</body>
+</html>

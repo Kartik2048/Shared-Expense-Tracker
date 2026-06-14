@@ -126,3 +126,14 @@ class StagingExpenseResponse(StagingExpenseBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+class StagingExpenseUpdate(BaseModel):
+    raw_date: Optional[str] = None
+    raw_description: Optional[str] = None
+    raw_paid_by: Optional[str] = None
+    raw_amount: Optional[str] = None
+    raw_currency: Optional[str] = None
+    raw_split_type: Optional[str] = None
+    raw_split_with: Optional[str] = None
+    raw_split_details: Optional[str] = None
+    raw_notes: Optional[str] = None
