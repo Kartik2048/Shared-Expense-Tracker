@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.database import engine, get_db
 from app.routers import ingestion, staging_actions, balances, auth
+from app.dependencies import get_current_user
 
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -55,8 +56,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db=db, user=user)
 
 
-@app.get("/users/", response_model=list[schemas.UserResponse], status_code=status.HTTP_200_OK)
-def read_users(db: Session = Depends(get_db)):
+@app.get("/users", response_model=list[schemas.UserResponse], status_code=status.HTTP_200_OK)
+def read_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Retrieve all registered Users.
     """

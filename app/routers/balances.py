@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 from app import models
 from app.database import get_db
@@ -26,12 +26,13 @@ class BalanceResponse(BaseModel):
     paid_details: List[ExpenseDetail]
     owed_details: List[ExpenseDetail]
 
-@router.get("/balances/{user_id}", response_model=BalanceResponse, status_code=status.HTTP_200_OK)
-def get_user_balances(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+@router.get("/balances", response_model=BalanceResponse, status_code=status.HTTP_200_OK)
+def get_user_balances(target_user_id: Optional[int] = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Calculate and return a user's total Paid, Owed, and Net Balance in INR,
     along with detailed breakdown logs of the underlying expenses.
     """
+    user_id = target_user_id if target_user_id is not None else current_user.id
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(

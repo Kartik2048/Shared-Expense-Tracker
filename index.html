@@ -739,7 +739,11 @@
         <div class="modal-content glass-panel" style="max-width: 650px; width: 90%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
                 <h3 class="title-font" id="balancesUserHeader" style="font-size: 1.5rem; font-weight: 700; margin: 0;">User Balance</h3>
-                <button class="card-btn" id="closeBalancesModalBtn" style="padding: 4px 10px; font-size: 0.95rem; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer; outline: none; transition: var(--transition);">✕</button>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select id="balance-user-select" class="form-select" style="background: rgba(15, 23, 42, 0.85); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 12px; font-size: 0.85rem; outline: none; transition: var(--transition); cursor: pointer; font-family: 'Inter', sans-serif; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
+                    </select>
+                    <button class="card-btn" id="closeBalancesModalBtn" style="padding: 4px 10px; font-size: 0.95rem; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer; outline: none; transition: var(--transition);">✕</button>
+                </div>
             </div>
             
             <div style="text-align: center; margin-bottom: 2rem;">
@@ -902,21 +906,13 @@
             updateSessionUI();
 
             // View My Balances drill-down handler
-            document.getElementById("viewBalanceBtn").addEventListener("click", async () => {
-                const token = localStorage.getItem("jwt_token");
-                if (!token) {
-                    alert("Please log in first.");
-                    return;
-                }
-                const payload = parseJwt(token);
-                if (!payload || !payload.user_id) {
-                    alert("Invalid session. Please log in again.");
-                    return;
-                }
-                const selected_user_id = payload.user_id;
-                
+            // Reusable function to fetch and render user balances
+            async function fetchAndRenderBalances(targetUserId) {
                 try {
-                    const response = await authFetch(`${API_BASE_URL}/balances/${selected_user_id}`);
+                    const url = targetUserId 
+                        ? `${API_BASE_URL}/balances?target_user_id=${targetUserId}`
+                        : `${API_BASE_URL}/balances`;
+                    const response = await authFetch(url);
                     if (!response.ok) {
                         const err = await response.json();
                         throw new Error(err.detail || "Failed to fetch balances.");
@@ -978,11 +974,61 @@
                         });
                     }
                     
+                    // Set dropdown value to match current data target
+                    document.getElementById("balance-user-select").value = data.user_id;
+                    
                     // Open Modal
                     document.getElementById("balancesModal").classList.add("active");
                 } catch (error) {
                     alert(`Error fetching balances: ${error.message}`);
                 }
+            }
+
+            // Populates the balance drilldown dropdown menu
+            async function populateBalancesUserSelect(currentUserId) {
+                const select = document.getElementById("balance-user-select");
+                try {
+                    const response = await authFetch(`${API_BASE_URL}/users`);
+                    if (response.ok) {
+                        const users = await response.json();
+                        select.innerHTML = "";
+                        users.forEach(u => {
+                            const opt = document.createElement("option");
+                            opt.value = u.id;
+                            opt.textContent = u.name;
+                            select.appendChild(opt);
+                        });
+                        select.value = currentUserId;
+                    }
+                } catch (e) {
+                    console.error("Failed to load users for balances dropdown select", e);
+                }
+            }
+
+            // View My Balances drill-down handler
+            document.getElementById("viewBalanceBtn").addEventListener("click", async () => {
+                const token = localStorage.getItem("jwt_token");
+                if (!token) {
+                    alert("Please log in first.");
+                    return;
+                }
+                const payload = parseJwt(token);
+                if (!payload || !payload.user_id) {
+                    alert("Invalid session. Please log in again.");
+                    return;
+                }
+                
+                await populateBalancesUserSelect(payload.user_id);
+                await fetchAndRenderBalances(payload.user_id);
+            });
+
+            // Listen to select user change on the dropdown menu
+            document.getElementById("balance-user-select").addEventListener("change", async (e) => {
+                const selectedUserId = e.target.value;
+                if (selectedUserId) {
+                    await fetchAndRenderBalances(selectedUserId);
+                }
+            });
             });
 
             // Modal Close Handler for Balances Modal

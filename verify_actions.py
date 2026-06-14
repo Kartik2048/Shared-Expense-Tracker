@@ -220,9 +220,9 @@ def test_staging_actions():
     staging_row1 = db.query(StagingExpense).filter(StagingExpense.id == 1).first()
     assert staging_row1 is not None and staging_row1.status == "approved"
 
-    print("\n--- 6. Testing GET /balances/{user_id} ---")
+    print("\n--- 6. Testing GET /balances ---")
     # Fetch Kartik's balance (User ID 1)
-    response = client.get(f"/balances/{kartik_user.id}", headers=headers)
+    response = client.get(f"/balances?target_user_id={kartik_user.id}", headers=headers)
     print(f"Status Code: {response.status_code}")
     print(f"Response: {json.dumps(response.json(), indent=2)}")
     assert response.status_code == 200
