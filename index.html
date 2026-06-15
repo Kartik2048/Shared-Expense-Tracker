@@ -598,11 +598,12 @@
 
             <!-- User Session Widget (Login Module) -->
             <div id="userSessionWidget" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 10px; background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 30px; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                <a id="googleLoginBtn" href="/login/google" class="btn" style="padding: 0.5rem 1.5rem; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2); margin: 0; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
+                <a id="login-btn" href="/login/google" class="btn" style="padding: 0.5rem 1.5rem; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2); margin: 0; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
                     Login with Google
                 </a>
                 <div id="sessionInfo" style="display: none; align-items: center; gap: 10px;">
-                    <span id="activeUserText" style="font-size: 0.85rem; color: var(--text-primary); font-weight: 500;"></span>
+                    <select id="balance-user-select" class="form-select" style="background: rgba(15, 23, 42, 0.85); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 12px; font-size: 0.85rem; outline: none; transition: var(--transition); cursor: pointer; font-family: 'Inter', sans-serif; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
+                    </select>
                     <button id="viewBalanceBtn" class="card-btn" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 20px; background: var(--accent); color: white; border: none; box-shadow: 0 4px 10px var(--accent-glow); margin: 0; font-weight: 600;">
                         View My Balances
                     </button>
@@ -636,7 +637,7 @@
         </section>
 
         <!-- 2. Interactive Ingestion Report Dashboard -->
-        <section class="dashboard-section" id="dashboardSection">
+        <section class="dashboard-section" id="dashboard-area">
             <div class="dashboard-header">
                 <button class="btn btn-back" id="backToUploadBtn">
                     <span>← Upload New File</span>
@@ -739,11 +740,7 @@
         <div class="modal-content glass-panel" style="max-width: 650px; width: 90%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
                 <h3 class="title-font" id="balancesUserHeader" style="font-size: 1.5rem; font-weight: 700; margin: 0;">User Balance</h3>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <select id="balance-user-select" class="form-select" style="background: rgba(15, 23, 42, 0.85); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 12px; font-size: 0.85rem; outline: none; transition: var(--transition); cursor: pointer; font-family: 'Inter', sans-serif; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
-                    </select>
-                    <button class="card-btn" id="closeBalancesModalBtn" style="padding: 4px 10px; font-size: 0.95rem; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer; outline: none; transition: var(--transition);">✕</button>
-                </div>
+                <button class="card-btn" id="closeBalancesModalBtn" style="padding: 4px 10px; font-size: 0.95rem; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer; outline: none; transition: var(--transition);">✕</button>
             </div>
             
             <div style="text-align: center; margin-bottom: 2rem;">
@@ -817,7 +814,7 @@
             const uploadBtn = document.getElementById("uploadBtn");
             const btnSpinner = document.getElementById("btnSpinner");
             
-            const dashboardSection = document.getElementById("dashboardSection");
+            const dashboardArea = document.getElementById("dashboard-area");
             const backToUploadBtn = document.getElementById("backToUploadBtn");
             const metricTotal = document.getElementById("metricTotal");
             const metricValid = document.getElementById("metricValid");
@@ -861,25 +858,32 @@
             }
 
             // Update user session UI elements based on authentication state
-            function updateSessionUI() {
+            async function updateSessionUI() {
                 const token = localStorage.getItem("jwt_token");
-                const googleLoginBtn = document.getElementById("googleLoginBtn");
+                const loginBtn = document.getElementById("login-btn");
+                const dashboardArea = document.getElementById("dashboard-area");
                 const sessionInfo = document.getElementById("sessionInfo");
-                const activeUserText = document.getElementById("activeUserText");
 
                 if (token) {
                     const payload = parseJwt(token);
                     if (payload && payload.email) {
-                        googleLoginBtn.style.display = "none";
-                        sessionInfo.style.display = "flex";
-                        activeUserText.textContent = payload.email;
+                        if (loginBtn) loginBtn.style.display = "none";
+                        if (sessionInfo) sessionInfo.style.display = "flex";
+                        if (payload.user_id) {
+                            await populateBalancesUserSelect(payload.user_id);
+                        }
+                        // Restore staged data on reload/login if any exists
+                        await refreshDashboard();
                         return;
                     }
                 }
                 
-                googleLoginBtn.style.display = "block";
-                sessionInfo.style.display = "none";
-                activeUserText.textContent = "";
+                if (loginBtn) loginBtn.style.display = "block";
+                if (sessionInfo) sessionInfo.style.display = "none";
+                if (dashboardArea) {
+                    dashboardArea.classList.remove("active");
+                    uploadSection.classList.remove("hidden");
+                }
             }
 
             // Extract token from query parameters on load
@@ -897,8 +901,6 @@
                 localStorage.removeItem("jwt_token");
                 updateSessionUI();
                 showToast("Logged out successfully.");
-                dashboardSection.classList.remove("active");
-                uploadSection.classList.remove("hidden");
                 resetUploadZone();
             });
 
@@ -1007,29 +1009,15 @@
 
             // View My Balances drill-down handler
             document.getElementById("viewBalanceBtn").addEventListener("click", async () => {
-                const token = localStorage.getItem("jwt_token");
-                if (!token) {
-                    alert("Please log in first.");
-                    return;
+                const selectVal = document.getElementById("balance-user-select").value;
+                if (selectVal) {
+                    await fetchAndRenderBalances(selectVal);
+                } else {
+                    alert("Please select a user first.");
                 }
-                const payload = parseJwt(token);
-                if (!payload || !payload.user_id) {
-                    alert("Invalid session. Please log in again.");
-                    return;
-                }
-                
-                await populateBalancesUserSelect(payload.user_id);
-                await fetchAndRenderBalances(payload.user_id);
             });
 
-            // Listen to select user change on the dropdown menu
-            document.getElementById("balance-user-select").addEventListener("change", async (e) => {
-                const selectedUserId = e.target.value;
-                if (selectedUserId) {
-                    await fetchAndRenderBalances(selectedUserId);
-                }
-            });
-            });
+            // Selection dropdown only changes value, balances are queried upon clicking View My Balances
 
             // Modal Close Handler for Balances Modal
             document.getElementById("closeBalancesModalBtn").addEventListener("click", () => {
@@ -1044,17 +1032,16 @@
                 dropZone.classList.add("dragover");
             });
 
-            ["dragleave", "dragend"].forEach(type => {
-                dropZone.addEventListener(type, () => {
-                    dropZone.classList.remove("dragover");
-                });
+            dropZone.addEventListener("dragleave", (e) => {
+                e.preventDefault();
+                dropZone.classList.remove("dragover");
             });
 
             dropZone.addEventListener("drop", (e) => {
                 e.preventDefault();
                 dropZone.classList.remove("dragover");
                 
-                if (e.dataTransfer.files.length > 0) {
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                     handleFileSelect(e.dataTransfer.files[0]);
                 }
             });
@@ -1085,21 +1072,32 @@
                 uploadBtn.disabled = true;
             }
 
-            // Upload action triggering API call
-            uploadBtn.addEventListener("click", async () => {
-                if (!selectedFile) return;
+            // Secure Upload CSV implementation using Fetch
+            async function uploadCSV(file) {
+                if (!file) return;
 
                 uploadBtn.disabled = true;
                 btnSpinner.style.display = "inline-block";
 
+                const token = localStorage.getItem("jwt_token");
                 const formData = new FormData();
-                formData.append("file", selectedFile);
+                formData.append("file", file);
 
                 try {
-                    const response = await authFetch(`${API_BASE_URL}/upload-csv`, {
+                    const response = await fetch(`${API_BASE_URL}/upload-csv`, {
                         method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${token}`
+                        },
                         body: formData
                     });
+
+                    if (response.status === 401) {
+                        localStorage.removeItem("jwt_token");
+                        updateSessionUI();
+                        showToast("Session expired or unauthorized. Please login again.");
+                        throw new Error("Unauthorized. Please log in.");
+                    }
 
                     if (!response.ok) {
                         const errorDetails = await response.json();
@@ -1116,11 +1114,17 @@
                 } finally {
                     btnSpinner.style.display = "none";
                 }
+            }
+
+            // Upload action triggering API call
+            uploadBtn.addEventListener("click", async () => {
+                if (!selectedFile) return;
+                await uploadCSV(selectedFile);
             });
 
             // Navigate back from dashboard screen to upload screen
             backToUploadBtn.addEventListener("click", () => {
-                dashboardSection.classList.remove("active");
+                dashboardArea.classList.remove("active");
                 uploadSection.classList.remove("hidden");
                 resetUploadZone();
             });
@@ -1131,7 +1135,13 @@
                     const response = await authFetch(`${API_BASE_URL}/staging`);
                     if (!response.ok) throw new Error("Failed to fetch current staging status.");
                     const result = await response.json();
-                    renderDashboard(result);
+                    if (result.summary && result.summary.total_ingested > 0) {
+                        renderDashboard(result);
+                    } else {
+                        // Staging is empty, show upload section
+                        if (dashboardArea) dashboardArea.classList.remove("active");
+                        uploadSection.classList.remove("hidden");
+                    }
                 } catch (error) {
                     console.error("Dashboard refresh failed:", error);
                 }
@@ -1222,7 +1232,7 @@
 
                 // Toggle visibility states
                 uploadSection.classList.add("hidden");
-                dashboardSection.classList.add("active");
+                dashboardArea.classList.add("active");
             }
 
             // Global dashboard interactions delegation
